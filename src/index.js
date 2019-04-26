@@ -11,10 +11,7 @@ const typeDefs = gql`
     seconds: Int
   }
 
-  type Error {
-    validationError: ValidationError
-    timeoutError: TimeoutError
-  }
+  union Error = ValidationError | TimeoutError
 
   type Mutation {
     register: Error
@@ -28,15 +25,28 @@ const typeDefs = gql`
 let showTimeoutError = false;
 
 const resolvers = {
+  Error: {
+    __resolveType: obj => {
+      if (obj.reason) {
+        return "TimeoutError";
+      }
+
+      if (obj.field) {
+        return "ValidationError";
+      }
+
+      return null;
+    }
+  },
   Query: { hello: () => "hi" },
   Mutation: {
     register: () => {
-      const error = {};
+      let error = {};
 
       if (showTimeoutError) {
-        error.timeoutError = { reason: "too many requests", seconds: 180 };
+        error = { reason: "too many requests", seconds: 180 };
       } else {
-        error.validationError = { field: "email", msg: "already taken" };
+        error = { field: "email", msg: "already taken" };
       }
 
       showTimeoutError = !showTimeoutError;
